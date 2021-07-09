@@ -153,6 +153,10 @@ var _ = BeforeSuite(func(done Done) {
 				discovery.ClusterIDLabel: remoteClusterID1,
 			},
 		},
+		Spec: discoveryv1alpha1.ForeignClusterSpec{
+			ForeignAuthURL: "https://example.com",
+			PeeringEnabled: discoveryv1alpha1.PeeringEnabledAuto,
+		},
 	}
 
 	foreignCluster2 = &discoveryv1alpha1.ForeignCluster{
@@ -161,6 +165,10 @@ var _ = BeforeSuite(func(done Done) {
 			Labels: map[string]string{
 				discovery.ClusterIDLabel: remoteClusterID2,
 			},
+		},
+		Spec: discoveryv1alpha1.ForeignClusterSpec{
+			ForeignAuthURL: "https://example.com",
+			PeeringEnabled: discoveryv1alpha1.PeeringEnabledAuto,
 		},
 	}
 

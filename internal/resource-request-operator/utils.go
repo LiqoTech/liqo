@@ -61,10 +61,8 @@ func (r *ResourceRequestReconciler) createForeignCluster(ctx context.Context,
 		},
 		Spec: discoveryv1alpha1.ForeignClusterSpec{
 			ClusterIdentity: resourceRequest.Spec.ClusterIdentity,
-			Namespace:       resourceRequest.Namespace,
-			Join:            false,
-			DiscoveryType:   discovery.IncomingPeeringDiscovery,
-			AuthURL:         resourceRequest.Spec.AuthURL,
+			PeeringEnabled:  discoveryv1alpha1.PeeringEnabledAuto,
+			ForeignAuthURL:  resourceRequest.Spec.AuthURL,
 		},
 	}
 

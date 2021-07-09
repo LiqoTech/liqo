@@ -65,7 +65,8 @@ func createForeignCluster() {
 			},
 		},
 		Spec: discoveryv1alpha1.ForeignClusterSpec{
-			AuthURL: "https://127.0.0.1:8080",
+			ForeignAuthURL: "https://127.0.0.1:8080",
+			PeeringEnabled: discoveryv1alpha1.PeeringEnabledAuto,
 		},
 	}
 

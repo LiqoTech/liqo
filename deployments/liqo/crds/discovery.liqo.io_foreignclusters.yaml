@@ -52,9 +52,6 @@ spec:
           spec:
             description: ForeignClusterSpec defines the desired state of ForeignCluster.
             properties:
-              authUrl:
-                description: URL where to contact foreign Auth service.
-                type: string
               clusterIdentity:
                 description: Foreign Cluster Identity.
                 properties:
@@ -68,30 +65,23 @@ spec:
                 required:
                 - clusterID
                 type: object
-              discoveryType:
-                default: Manual
-                description: How this ForeignCluster has been discovered.
-                enum:
-                - LAN
-                - WAN
-                - Manual
-                - IncomingPeering
+              foreignAuthUrl:
+                description: URL where to contact foreign Auth service.
+                pattern: https:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)
                 type: string
-              join:
-                default: false
-                description: Enable join process to foreign cluster.
-                type: boolean
-              namespace:
-                description: Namespace where Liqo is deployed. (Deprecated)
+              peeringEnabled:
+                default: Auto
+                description: Enable the peering process to the remote cluster.
+                enum:
+                - Auto
+                - "No"
+                - "Yes"
                 type: string
               trustMode:
-                default: Unknown
-                description: Indicates if this remote cluster is trusted or not.
-                enum:
-                - Unknown
-                - Trusted
-                - Untrusted
-                type: string
+                default: true
+                description: Indicates if the local cluster has to skip the tls verification
+                  over the remote Authentication Service or not.
+                type: boolean
               ttl:
                 description: If discoveryType is LAN or WAN and this indicates the
                   number of seconds after that this ForeignCluster will be removed
@@ -99,7 +89,8 @@ spec:
                 minimum: 0
                 type: integer
             required:
-            - authUrl
+            - foreignAuthUrl
+            - peeringEnabled
             type: object
           status:
             description: ForeignClusterStatus defines the observed state of ForeignCluster.
