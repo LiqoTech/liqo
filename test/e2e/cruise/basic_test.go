@@ -1,4 +1,4 @@
-package peeringe2e
+package cruise
 
 import (
 	"context"
@@ -35,28 +35,6 @@ var _ = Describe("Liqo E2E", func() {
 
 	Describe("Assert that Liqo is up, pod offloading and network connectivity are working", func() {
 		Context("Check Join Status", func() {
-			DescribeTable("Liqo pods are up and running",
-				func(cluster tester.ClusterContext, namespace string) {
-					readyPods, notReadyPods, err := util.ArePodsUp(ctx, cluster.Client, testContext.Namespace)
-					Eventually(func() bool {
-						return err == nil
-					}, timeout, interval).Should(BeTrue())
-					Expect(len(notReadyPods)).To(Equal(0))
-					Expect(len(readyPods)).Should(BeNumerically(">", 0))
-				},
-				Entry("Pods UP on cluster 1", testContext.Clusters[0], namespace),
-				Entry("Pods UP on cluster 2", testContext.Clusters[1], namespace),
-			)
-
-			DescribeTable("Liqo Virtual Nodes are ready",
-				func(homeCluster tester.ClusterContext, namespace string) {
-					nodeReady := util.CheckVirtualNodes(ctx, homeCluster.Client)
-					Expect(nodeReady).To(BeTrue())
-				},
-				Entry("VirtualNode is Ready on cluster 2", testContext.Clusters[0], namespace),
-				Entry("VirtualNode is Ready on cluster 1", testContext.Clusters[1], namespace),
-			)
-
 			DescribeTable("Liqo Pod to Pod Connectivity Check",
 				func(homeCluster, foreignCluster tester.ClusterContext, namespace string) {
 					By("Deploy Tester Pod", func() {
