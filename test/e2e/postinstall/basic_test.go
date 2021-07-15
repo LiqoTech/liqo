@@ -21,7 +21,7 @@ func TestE2E(t *testing.T) {
 var _ = Describe("Liqo E2E", func() {
 	var (
 		ctx         = context.Background()
-		testContext = tester.GetTester(ctx)
+		testContext = tester.GetTester(ctx,true)
 		namespace   = "liqo"
 		interval    = 3 * time.Second
 		timeout     = 5 * time.Minute
@@ -29,27 +29,31 @@ var _ = Describe("Liqo E2E", func() {
 
 	Describe("Assert that Liqo is up, pod offloading and network connectivity are working", func() {
 		Context("Check Join Status", func() {
+			var PodsUpAndRunningTableEntries,VirtualNodesTableEntries []TableEntry
+			for index := range testContext.Clusters {
+				PodsUpAndRunningTableEntries = append(PodsUpAndRunningTableEntries,Entry("Pods UP on cluster "+string(rune(index)),
+					testContext.Clusters[index], namespace))
+				VirtualNodesTableEntries = append(VirtualNodesTableEntries,Entry("VirtualNode is Ready on cluster "+string(rune(index)),
+					testContext.Clusters[index], namespace))
+			}
 
 			DescribeTable("Liqo pods are up and running",
 				func(cluster tester.ClusterContext, namespace string) {
-					readyPods, notReadyPods, err := util.ArePodsUp(ctx, cluster.Client, testContext.Namespace)
 					Eventually(func() bool {
-						return err == nil
+						readyPods, notReadyPods, err := util.ArePodsUp(ctx, cluster.NativeClient, testContext.Namespace)
+						return err == nil && len(notReadyPods) == 0 && len(readyPods) > 0
 					}, timeout, interval).Should(BeTrue())
-					Expect(len(notReadyPods)).To(Equal(0))
-					Expect(len(readyPods)).Should(BeNumerically(">", 0))
 				},
-				Entry("Pods UP on cluster 1", testContext.Clusters[0], namespace),
-				Entry("Pods UP on cluster 2", testContext.Clusters[1], namespace),
+				PodsUpAndRunningTableEntries...
 			)
 
-			DescribeTable("Liqo Virtual Nodes are ready",
+			DescribeTable("Liqo Virtual nodes are ready",
 				func(homeCluster tester.ClusterContext, namespace string) {
-					nodeReady := util.CheckVirtualNodes(ctx, homeCluster.Client)
-					Expect(nodeReady).To(BeTrue())
+					Eventually(func() bool {
+						return util.CheckVirtualNodes(ctx, homeCluster.NativeClient)
+					}, timeout, interval).Should(BeTrue())
 				},
-				Entry("VirtualNode is Ready on cluster 2", testContext.Clusters[0], namespace),
-				Entry("VirtualNode is Ready on cluster 1", testContext.Clusters[1], namespace),
+				VirtualNodesTableEntries...
 			)
 		})
 	})

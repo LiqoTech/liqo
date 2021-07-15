@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	configv1alpha1 "github.com/liqotech/liqo/apis/config/v1alpha1"
@@ -48,7 +49,8 @@ type ClusterContext struct {
 const (
 	namespaceEnvVar     = "NAMESPACE"
 	ClusterNumberVarKey = "CLUSTER_NUMBER"
-	kubeconfigBaseName  = "liqoKubeconfig"
+	kubeconfigBaseName  = "liqo_kubeconf_"
+	TmpDirVarName       = "TMPDIR"
 )
 
 var (
@@ -57,15 +59,20 @@ var (
 )
 
 // GetTester returns a Tester instance.
-func GetTester(ctx context.Context, controllerClientsPresence bool) *Tester {
+func GetTester(ctx context.Context, controllerClientsPresence bool) (*Tester) {
+	var err error
 	if tester == nil {
-		tester = createTester(ctx, controllerClientsPresence)
+		tester, err = createTester(ctx, controllerClientsPresence)
+		if err != nil {
+			klog.Fatal(err)
+		}
 	}
 	return tester
 }
 
-func createTester(ctx context.Context, controllerClientsPresence bool) *Tester {
+func createTester(ctx context.Context, controllerClientsPresence bool) (*Tester,error) {
 	namespace := testutils.GetEnvironmentVariable(namespaceEnvVar)
+	TmpDir := testutils.GetEnvironmentVariable(TmpDirVarName)
 
 	// Here is necessary to add the controller runtime clients.
 	scheme := getScheme()
@@ -77,13 +84,17 @@ func createTester(ctx context.Context, controllerClientsPresence bool) *Tester {
 
 	clusterNumber,err := getClusterNumberFromEnv()
 	if err != nil {
-		return nil
+		return nil,err
 	}
 
 	for i := 0; i < clusterNumber; i++ {
-		var kubeconfigName = strings.Join([]string{kubeconfigBaseName,string(rune(i))},"_")
+		var kubeconfigName = strings.Join([]string{kubeconfigBaseName,string(rune(i))},"")
+		var kubeconfigPath = strings.Join([]string{TmpDir,kubeconfigName},"/")
+		if _, err = os.Stat(kubeconfigPath); err != nil {
+			return nil,err
+		}
 		var c = ClusterContext{
-			Config:         testutils.GetRestConfig(kubeconfigName),
+			Config:         testutils.GetRestConfig(kubeconfigPath),
 			KubeconfigPath: testutils.GetEnvironmentVariable(kubeconfigName),
 		}
 		c.NativeClient =  testutils.GetNativeClient(c.Config)
@@ -97,7 +108,7 @@ func createTester(ctx context.Context, controllerClientsPresence bool) *Tester {
 		tester.Clusters = append(tester.Clusters,c)
 	}
 
-	return tester
+	return tester,nil
 }
 
 func getClusterNumberFromEnv() (int,error) {
