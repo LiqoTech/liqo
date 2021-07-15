@@ -54,12 +54,11 @@ const (
 )
 
 var (
-	tester        *Tester
-
+	tester *Tester
 )
 
 // GetTester returns a Tester instance.
-func GetTester(ctx context.Context, controllerClientsPresence bool) (*Tester) {
+func GetTester(ctx context.Context, controllerClientsPresence bool) *Tester {
 	var err error
 	if tester == nil {
 		tester, err = createTester(ctx, controllerClientsPresence)
@@ -70,7 +69,7 @@ func GetTester(ctx context.Context, controllerClientsPresence bool) (*Tester) {
 	return tester
 }
 
-func createTester(ctx context.Context, controllerClientsPresence bool) (*Tester,error) {
+func createTester(ctx context.Context, controllerClientsPresence bool) (*Tester, error) {
 	namespace := testutils.GetEnvironmentVariable(namespaceEnvVar)
 	TmpDir := testutils.GetEnvironmentVariable(TmpDirVarName)
 
@@ -82,22 +81,22 @@ func createTester(ctx context.Context, controllerClientsPresence bool) (*Tester,
 		Namespace: namespace,
 	}
 
-	clusterNumber,err := getClusterNumberFromEnv()
+	clusterNumber, err := getClusterNumberFromEnv()
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 
 	for i := 0; i < clusterNumber; i++ {
-		var kubeconfigName = strings.Join([]string{kubeconfigBaseName,string(rune(i))},"")
-		var kubeconfigPath = strings.Join([]string{TmpDir,kubeconfigName},"/")
+		var kubeconfigName = strings.Join([]string{kubeconfigBaseName, string(rune(i))}, "")
+		var kubeconfigPath = strings.Join([]string{TmpDir, kubeconfigName}, "/")
 		if _, err = os.Stat(kubeconfigPath); err != nil {
-			return nil,err
+			return nil, err
 		}
 		var c = ClusterContext{
 			Config:         testutils.GetRestConfig(kubeconfigPath),
 			KubeconfigPath: testutils.GetEnvironmentVariable(kubeconfigName),
 		}
-		c.NativeClient =  testutils.GetNativeClient(c.Config)
+		c.NativeClient = testutils.GetNativeClient(c.Config)
 		c.ClusterID = testutils.GetClusterID(ctx, c.NativeClient, namespace)
 
 		if controllerClientsPresence {
@@ -105,24 +104,24 @@ func createTester(ctx context.Context, controllerClientsPresence bool) (*Tester,
 			tester.Clusters[i].ControllerClient = controllerClient
 			tester.ClustersClients[c.ClusterID] = controllerClient
 		}
-		tester.Clusters = append(tester.Clusters,c)
+		tester.Clusters = append(tester.Clusters, c)
 	}
 
-	return tester,nil
+	return tester, nil
 }
 
-func getClusterNumberFromEnv() (int,error) {
+func getClusterNumberFromEnv() (int, error) {
 	var clusterNumberString string
 	var clusterNumber int
 	var ok bool
 	var err error
-	if clusterNumberString,ok = os.LookupEnv(ClusterNumberVarKey); !ok {
-		return 0,fmt.Errorf("%s Variable not found", ClusterNumberVarKey)
+	if clusterNumberString, ok = os.LookupEnv(ClusterNumberVarKey); !ok {
+		return 0, fmt.Errorf("%s Variable not found", ClusterNumberVarKey)
 	}
-	if clusterNumber,err = strconv.Atoi(clusterNumberString); err != nil || clusterNumber < 0 {
-		return 0,err
+	if clusterNumber, err = strconv.Atoi(clusterNumberString); err != nil || clusterNumber < 0 {
+		return 0, err
 	}
-	return clusterNumber,nil
+	return clusterNumber, nil
 }
 
 func getScheme() *runtime.Scheme {

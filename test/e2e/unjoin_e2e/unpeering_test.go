@@ -24,16 +24,16 @@ func Test_Unjoin(t *testing.T) {
 var _ = Describe("Liqo E2E", func() {
 	var (
 		ctx         = context.Background()
-		testContext = tester.GetTester(ctx)
+		testContext = tester.GetTester(ctx, true)
 	)
 
 	Describe("Assert that Liqo is correctly uninstalled", func() {
 		Context("Test Unjoin", func() {
-			err := NoPods(testContext.Clusters[0].Client, testContext.Namespace)
+			err := NoPods(testContext.Clusters[0].NativeClient, testContext.Namespace)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = NoJoined(testContext.Clusters[0].Client)
+			err = NoJoined(testContext.Clusters[0].NativeClient)
 			Expect(err).ShouldNot(HaveOccurred())
-			readyPods, notReadyPods, err := util.ArePodsUp(ctx, testContext.Clusters[1].Client, testContext.Namespace)
+			readyPods, notReadyPods, err := util.ArePodsUp(ctx, testContext.Clusters[1].NativeClient, testContext.Namespace)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(notReadyPods).Should(BeZero())
 			Expect(len(readyPods)).Should(BeNumerically(">", 0))

@@ -21,7 +21,7 @@ func TestE2E(t *testing.T) {
 var _ = Describe("Liqo E2E", func() {
 	var (
 		ctx         = context.Background()
-		testContext = tester.GetTester(ctx,true)
+		testContext = tester.GetTester(ctx, true)
 		namespace   = "liqo"
 		interval    = 3 * time.Second
 		timeout     = 5 * time.Minute
@@ -29,11 +29,11 @@ var _ = Describe("Liqo E2E", func() {
 
 	Describe("Assert that Liqo is up, pod offloading and network connectivity are working", func() {
 		Context("Check Join Status", func() {
-			var PodsUpAndRunningTableEntries,VirtualNodesTableEntries []TableEntry
+			var PodsUpAndRunningTableEntries, VirtualNodesTableEntries []TableEntry
 			for index := range testContext.Clusters {
-				PodsUpAndRunningTableEntries = append(PodsUpAndRunningTableEntries,Entry("Pods UP on cluster "+string(rune(index)),
+				PodsUpAndRunningTableEntries = append(PodsUpAndRunningTableEntries, Entry("Pods UP on cluster "+string(rune(index)),
 					testContext.Clusters[index], namespace))
-				VirtualNodesTableEntries = append(VirtualNodesTableEntries,Entry("VirtualNode is Ready on cluster "+string(rune(index)),
+				VirtualNodesTableEntries = append(VirtualNodesTableEntries, Entry("VirtualNode is Ready on cluster "+string(rune(index)),
 					testContext.Clusters[index], namespace))
 			}
 
@@ -44,7 +44,7 @@ var _ = Describe("Liqo E2E", func() {
 						return err == nil && len(notReadyPods) == 0 && len(readyPods) > 0
 					}, timeout, interval).Should(BeTrue())
 				},
-				PodsUpAndRunningTableEntries...
+				PodsUpAndRunningTableEntries...,
 			)
 
 			DescribeTable("Liqo Virtual nodes are ready",
@@ -53,7 +53,7 @@ var _ = Describe("Liqo E2E", func() {
 						return util.CheckVirtualNodes(ctx, homeCluster.NativeClient)
 					}, timeout, interval).Should(BeTrue())
 				},
-				VirtualNodesTableEntries...
+				VirtualNodesTableEntries...,
 			)
 		})
 	})
