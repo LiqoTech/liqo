@@ -47,10 +47,10 @@ type ClusterContext struct {
 
 // Environment variable.
 const (
-	namespaceEnvVar     = "NAMESPACE"
-	ClusterNumberVarKey = "CLUSTER_NUMBER"
-	kubeconfigBaseName  = "liqo_kubeconf_"
-	TmpDirVarName       = "TMPDIR"
+	namespaceEnvVar      = "NAMESPACE"
+	ClusterNumberVarKey  = "CLUSTER_NUMBER"
+	kubeconfigBaseName   = "liqo_kubeconf_"
+	KubeconfigDirVarName = "KUBECONFIGDIR"
 )
 
 var (
@@ -71,37 +71,37 @@ func GetTester(ctx context.Context, controllerClientsPresence bool) *Tester {
 
 func createTester(ctx context.Context, controllerClientsPresence bool) (*Tester, error) {
 	namespace := testutils.GetEnvironmentVariable(namespaceEnvVar)
-	TmpDir := testutils.GetEnvironmentVariable(TmpDirVarName)
+	TmpDir := testutils.GetEnvironmentVariable(KubeconfigDirVarName)
 
 	// Here is necessary to add the controller runtime clients.
 	scheme := getScheme()
-	tester.ClustersClients = map[string]client.Client{}
 
 	tester = &Tester{
 		Namespace: namespace,
 	}
 
+	tester.ClustersClients = map[string]client.Client{}
 	clusterNumber, err := getClusterNumberFromEnv()
 	if err != nil {
 		return nil, err
 	}
 
-	for i := 0; i < clusterNumber; i++ {
-		var kubeconfigName = strings.Join([]string{kubeconfigBaseName, string(rune(i))}, "")
-		var kubeconfigPath = strings.Join([]string{TmpDir, kubeconfigName}, "/")
+	for i := 1; i <= clusterNumber; i++ {
+		var kubeconfigName = strings.Join([]string{kubeconfigBaseName, fmt.Sprintf("%d",i)}, "")
+		var kubeconfigPath = strings.Join([]string{TmpDir, kubeconfigName}, "")
 		if _, err = os.Stat(kubeconfigPath); err != nil {
 			return nil, err
 		}
 		var c = ClusterContext{
 			Config:         testutils.GetRestConfig(kubeconfigPath),
-			KubeconfigPath: testutils.GetEnvironmentVariable(kubeconfigName),
+			KubeconfigPath: kubeconfigPath,
 		}
 		c.NativeClient = testutils.GetNativeClient(c.Config)
 		c.ClusterID = testutils.GetClusterID(ctx, c.NativeClient, namespace)
 
 		if controllerClientsPresence {
 			controllerClient := testutils.GetControllerClient(ctx, scheme, c.Config)
-			tester.Clusters[i].ControllerClient = controllerClient
+			c.ControllerClient = controllerClient
 			tester.ClustersClients[c.ClusterID] = controllerClient
 		}
 		tester.Clusters = append(tester.Clusters, c)

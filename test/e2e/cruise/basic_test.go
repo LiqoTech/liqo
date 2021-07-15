@@ -2,6 +2,7 @@ package cruise
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -39,9 +40,10 @@ var _ = Describe("Liqo E2E", func() {
 			var PodsUpAndRunningTableEntries []TableEntry
 			for index := range testContext.Clusters {
 				for index2 := range testContext.Clusters {
-					if index < index2 {
+					if index != index2 {
 						PodsUpAndRunningTableEntries = append(PodsUpAndRunningTableEntries,
-							Entry(strings.Join([]string{"Check Pod to Pod connectivity from cluster", string(index), "to cluster", string(index2)}, " "),
+							Entry(strings.Join([]string{"Check Pod to Pod connectivity from cluster", fmt.Sprintf("%d",index),
+								"to cluster", fmt.Sprintf("%d",index2)}, " "),
 								testContext.Clusters[index], testContext.Clusters[index2], namespace))
 					}
 				}
@@ -56,15 +58,9 @@ var _ = Describe("Liqo E2E", func() {
 							check := net.CheckTesterPods(ctx, homeCluster.NativeClient, foreignCluster.NativeClient, homeCluster.ClusterID)
 							return check
 						}, timeout, interval).Should(BeTrue())
-					})
-
-					By("Check Pod to Pod Connectivity", func() {
 						Eventually(func() error {
 							return net.CheckPodConnectivity(ctx, homeCluster.Config, homeCluster.NativeClient)
 						}, timeout, interval).ShouldNot(HaveOccurred())
-					})
-
-					By("Check Service NodePort Connectivity", func() {
 						Eventually(func() error {
 							return net.ConnectivityCheckNodeToPod(ctx, homeCluster.NativeClient, homeCluster.ClusterID)
 						}, timeout, interval).ShouldNot(HaveOccurred())
