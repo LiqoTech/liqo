@@ -44,8 +44,8 @@ echo "SERVICE CIDR: $SERVICE_CIDR"
 {{%expand "AWS Elastic Kubernetes Service (EKS)" %}}
 Retrieve information about your clusters, typing:
 ```bash
-API_SERVER=$(aws eks describe-cluster --name liqo-cluster --region=eu-central-1 | jq -r .cluster.endpoint | sed 's/https:\/\///g' ))
-
+API_SERVER=$(aws eks describe-cluster --name __YOUR_CLUSTER_NAME --region __YOUR_CLUSTER_AWS_REGION__ | jq -r .cluster.endpoint | sed 's/https:\/\///g' ))
+POD_CIDR=$(aws eks describe-cluster --name liqo-cluster --region eu-central-1 | jq -r '.cluster.resourcesVpcConfig.vpcId' | xargs aws ec2 describe-vpcs --vpc-ids --region eu-central-1 | jq '.Vpcs[0].CidrBlock')
 ```
 {{% /expand%}}
 
