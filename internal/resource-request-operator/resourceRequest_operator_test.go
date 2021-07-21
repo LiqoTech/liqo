@@ -133,6 +133,27 @@ func createTestPods() (podWithLabels, podWithoutLabels *corev1.Pod) {
 	Expect(err).ToNot(HaveOccurred())
 	wrongPod, err = clientset.CoreV1().Pods("default").Create(ctx, wrongPod, metav1.CreateOptions{})
 	Expect(err).ToNot(HaveOccurred())
+	// set Status Ready
+	pod1.Status = corev1.PodStatus{
+		Conditions: []corev1.PodCondition{
+			0: {
+				Type:   corev1.PodReady,
+				Status: corev1.ConditionTrue,
+			},
+		},
+	}
+	wrongPod.Status = corev1.PodStatus{
+		Conditions: []corev1.PodCondition{
+			0: {
+				Type:   corev1.PodReady,
+				Status: corev1.ConditionTrue,
+			},
+		},
+	}
+	pod1, err = clientset.CoreV1().Pods("default").UpdateStatus(ctx, pod1, metav1.UpdateOptions{})
+	Expect(err).ToNot(HaveOccurred())
+	wrongPod, err = clientset.CoreV1().Pods("default").UpdateStatus(ctx, wrongPod, metav1.UpdateOptions{})
+	Expect(err).ToNot(HaveOccurred())
 	return pod1, wrongPod
 }
 
@@ -300,27 +321,17 @@ var _ = Describe("ResourceRequest Operator", func() {
 			})))
 
 			By("Checking resources at offer creation")
+			fmt.Printf("Pod condition %v ", podWithoutLabel.Status.Conditions)
 			podReq, _ := resourcehelper.PodRequestsAndLimits(podWithoutLabel)
 			Eventually(func() bool {
-				offer := &sharingv1alpha1.ResourceOffer{}
-				err := k8sClient.Get(ctx, types.NamespacedName{
-					Name:      offerPrefix + clusterID,
-					Namespace: ResourcesNamespace,
-				}, offer)
-				if err != nil {
-					return false
+				nodeList := []corev1.ResourceList{
+					0: node1.Status.Allocatable,
+					1: node2.Status.Allocatable,
 				}
-				offerResources := offer.Spec.ResourceQuota.Hard
-				for resourceName, quantity := range offerResources {
-					testValue := node2.Status.Allocatable[resourceName].DeepCopy()
-					testValue.Add(node1.Status.Allocatable[resourceName])
-					testValue.Sub(podReq[resourceName])
-					scale(resourceName, &testValue)
-					if quantity.Cmp(testValue) != 0 {
-						return false
-					}
+				podList := []corev1.ResourceList{
+					0: podReq,
 				}
-				return true
+				return checkResourceOfferUpdate(nodeList, podList)
 			}, timeout, interval).Should(BeTrue())
 
 			By("Checking ResourceOffer invalidation on request set deleting phase")
@@ -530,6 +541,37 @@ var _ = Describe("ResourceRequest Operator", func() {
 				}
 				return checkResourceOfferUpdate(nodeList, podList)
 			}, timeout, interval).Should(BeTrue())
+			By("Checking correct update of resource after pod changing Status")
+			podWithoutLabel.Status.Conditions[0] = corev1.PodCondition{
+				Type:   corev1.PodReady,
+				Status: corev1.ConditionFalse,
+			}
+			podWithoutLabel, err = clientset.CoreV1().Pods("default").UpdateStatus(ctx, podWithoutLabel, metav1.UpdateOptions{})
+			Expect(err).ToNot(HaveOccurred())
+			Eventually(func() bool {
+				nodeList := []corev1.ResourceList{
+					0: node2.Status.Allocatable,
+				}
+				var podList []corev1.ResourceList
+				return checkResourceOfferUpdate(nodeList, podList)
+			}, timeout, interval).Should(BeTrue())
+			// set the pod ready again
+			podWithoutLabel.Status.Conditions[0] = corev1.PodCondition{
+				Type:   corev1.PodReady,
+				Status: corev1.ConditionTrue,
+			}
+			_, err = clientset.CoreV1().Pods("default").UpdateStatus(ctx, podWithoutLabel, metav1.UpdateOptions{})
+			Expect(err).ToNot(HaveOccurred())
+			Eventually(func() bool {
+				nodeList := []corev1.ResourceList{
+					0: node2.Status.Allocatable,
+				}
+				podList := []corev1.ResourceList{
+					0: podReq,
+				}
+				return checkResourceOfferUpdate(nodeList, podList)
+			}, timeout, interval).Should(BeTrue())
+
 		})
 	})
 })
