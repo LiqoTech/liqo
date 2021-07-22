@@ -1,0 +1,55 @@
+---
+{{- $ctrlManagerConfig := (merge (dict "name" "controller-manager" "module" "controller-manager") .) -}}
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    {{- include "liqo.labels" $ctrlManagerConfig | nindent 4 }}
+  name: {{ include "liqo.prefixedName" $ctrlManagerConfig }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "liqo.selectorLabels" $ctrlManagerConfig | nindent 6 }}
+  template:
+    metadata:
+    {{- if .Values.controllerManager.pod.annotations }}
+      annotations:
+      {{- toYaml .Values.controllerManager.pod.annotations | nindent 8 }}
+    {{- end }}
+      labels:
+        {{- include "liqo.labels" $ctrlManagerConfig | nindent 8 }}
+      {{- if .Values.controllerManager.pod.labels }}
+        {{- toYaml .Values.controllerManager.pod.labels | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "liqo.prefixedName" $ctrlManagerConfig }}
+      containers:
+      - image: {{ .Values.controllerManager.imageName }}{{ include "liqo.suffix" $ctrlManagerConfig }}:{{ include "liqo.version" $ctrlManagerConfig }}
+        imagePullPolicy: {{ .Values.pullPolicy }}
+        name: {{ $ctrlManagerConfig.name }}
+        command: ["/usr/bin/liqo-controller-manager"]
+        args:
+          - "--cluster-id"
+          - "$(CLUSTER_ID)"
+          - "--liqo-namespace"
+          - "$(POD_NAMESPACE)"
+          - "--kubelet-image"
+          - {{ .Values.virtualKubelet.imageName }}{{ include "liqo.suffix" $ctrlManagerConfig }}:{{ include "liqo.version" $ctrlManagerConfig }}
+          - "--init-kubelet-image"
+          - {{ .Values.virtualKubelet.initContainer.imageName }}{{ include "liqo.suffix" $ctrlManagerConfig }}:{{ include "liqo.version" $ctrlManagerConfig }}
+        env:
+          - name: CLUSTER_ID
+            valueFrom:
+              configMapKeyRef:
+                name: cluster-id
+                key: cluster-id
+          - name: POD_NAMESPACE
+            valueFrom:
+             fieldRef:
+               fieldPath: metadata.namespace
+        resources:
+          requests:
+            cpu: 100m
+            memory: 150M
