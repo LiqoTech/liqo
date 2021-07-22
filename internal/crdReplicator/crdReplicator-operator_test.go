@@ -13,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/klog/v2"
 
 	configv1alpha1 "github.com/liqotech/liqo/apis/config/v1alpha1"
@@ -94,16 +93,14 @@ func getCRDReplicator() Controller {
 	tenantmanager := tenantnamespace.NewTenantNamespaceManager(k8sclient)
 	clusterIDInterface := clusterid.NewStaticClusterID(localClusterID)
 	return Controller{
-		Scheme:                         nil,
-		ClusterID:                      localClusterID,
-		RemoteDynClients:               map[string]dynamic.Interface{remoteClusterID: dynClient},
-		RemoteDynSharedInformerFactory: map[string]dynamicinformer.DynamicSharedInformerFactory{remoteClusterID: dynFac},
-		RegisteredResources:            nil,
-		UnregisteredResources:          nil,
-		RemoteWatchers:                 map[string]map[string]chan struct{}{},
-		LocalDynClient:                 dynClient,
-		LocalDynSharedInformerFactory:  localDynFac,
-		LocalWatchers:                  map[string]chan struct{}{},
+		Scheme:                nil,
+		ClusterID:             localClusterID,
+		RemoteDynClients:      map[string]dynamic.Interface{remoteClusterID: dynClient},
+		RegisteredResources:   nil,
+		UnregisteredResources: nil,
+		RemoteWatchers:        map[string]map[string]chan struct{}{},
+		LocalDynClient:        dynClient,
+		LocalWatchers:         map[string]chan struct{}{},
 
 		NamespaceManager:                 tenantmanager,
 		IdentityManager:                  identitymanager.NewCertificateIdentityManager(k8sclient, clusterIDInterface, tenantmanager),

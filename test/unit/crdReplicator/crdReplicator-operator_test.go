@@ -13,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/klog/v2"
 
 	netv1alpha1 "github.com/liqotech/liqo/apis/net/v1alpha1"
@@ -41,20 +40,17 @@ var (
 func setupDispatcherOperator() error {
 	var err error
 	localDynClient := dynamic.NewForConfigOrDie(k8sManagerLocal.GetConfig())
-	localDynFac := dynamicinformer.NewFilteredDynamicSharedInformerFactory(localDynClient, crdreplicator.ResyncPeriod, metav1.NamespaceAll, crdreplicator.SetLabelsForLocalResources)
 	dOperator = &crdreplicator.Controller{
-		Scheme:                         k8sManagerLocal.GetScheme(),
-		Client:                         k8sManagerLocal.GetClient(),
-		ClientSet:                      nil,
-		ClusterID:                      localClusterID,
-		RemoteDynClients:               peeringClustersDynClients, // we already populate the dynamicClients of the peering clusters
-		LocalDynClient:                 localDynClient,
-		LocalDynSharedInformerFactory:  localDynFac,
-		RemoteDynSharedInformerFactory: peeringClustersDynFactories,
-		RegisteredResources:            nil,
-		UnregisteredResources:          nil,
-		LocalWatchers:                  make(map[string]chan struct{}),
-		RemoteWatchers:                 make(map[string]map[string]chan struct{}),
+		Scheme:                k8sManagerLocal.GetScheme(),
+		Client:                k8sManagerLocal.GetClient(),
+		ClientSet:             nil,
+		ClusterID:             localClusterID,
+		RemoteDynClients:      peeringClustersDynClients, // we already populate the dynamicClients of the peering clusters
+		LocalDynClient:        localDynClient,
+		RegisteredResources:   nil,
+		UnregisteredResources: nil,
+		LocalWatchers:         make(map[string]chan struct{}),
+		RemoteWatchers:        make(map[string]map[string]chan struct{}),
 	}
 	err = dOperator.SetupWithManager(k8sManagerLocal)
 	if err != nil {
