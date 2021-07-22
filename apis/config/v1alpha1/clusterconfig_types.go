@@ -148,8 +148,7 @@ type DiscoveryConfig struct {
 	EnableDiscovery     bool `json:"enableDiscovery"`
 	EnableAdvertisement bool `json:"enableAdvertisement"`
 
-	AutoJoin          bool `json:"autojoin"`
-	AutoJoinUntrusted bool `json:"autojoinUntrusted"`
+	AutoJoin bool `json:"autojoin"`
 
 	AuthServiceAddress string `json:"authServiceAddress,omitempty"`
 	AuthServicePort    string `json:"authServicePort,omitempty"`
