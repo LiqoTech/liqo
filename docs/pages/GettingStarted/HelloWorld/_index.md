@@ -1,9 +1,7 @@
 ---
-title: Quickstart
+title: Hello World! 
 weight: 1
 ---
-
-## The fast path to Liqo
 
 The following steps will guide you through a tour to learn how to install Liqo and experiment with its most notable capabilities.
 

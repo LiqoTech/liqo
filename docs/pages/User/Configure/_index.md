@@ -1,6 +1,6 @@
 ---
-title: Post-Install
-weight: 4
+title: Configure
+weight: 2
 ---
 
 Some parameters can be configured on Liqo by using:

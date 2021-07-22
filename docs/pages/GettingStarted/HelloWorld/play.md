@@ -1,5 +1,5 @@
 ---
-title: Play with a micro-service application
+title: Deploy an application
 weight: 5
 ---
 

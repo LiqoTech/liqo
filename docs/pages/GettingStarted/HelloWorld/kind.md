@@ -1,5 +1,5 @@
 ---
-title: Provision the Liqo Playground
+title: Set up the Playground
 weight: 1
 ---
 

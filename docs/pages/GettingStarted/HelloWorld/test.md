@@ -1,5 +1,5 @@
 ---
-title: Use resources available in a foreign cluster
+title: Use resources in a foreign cluster
 weight: 4
 ---
 
