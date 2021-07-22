@@ -17,6 +17,8 @@ package main
 
 import (
 	"flag"
+	"github.com/containernetworking/plugins/pkg/ns"
+	tunnelwg "github.com/liqotech/liqo/pkg/liqonet/tunnel/wireguard"
 	"os"
 	"strings"
 	"sync"
@@ -222,29 +224,6 @@ func main() {
 			klog.Errorf("unable to get pod namespace: %v", err)
 			os.Exit(1)
 		}
-		// This manager is used for the label controller. It needs to watch the
-		// gateway pods which live in a specific namespace. The main manager on the other
-		// side needs to have permissions to watch the liqo CRDs in every namespace. To limit
-		// the permissions needed by the gateway components for the pods resources we use a
-		// different manager with limited permissions.
-		labelMgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-			MapperProvider:     mapperUtils.LiqoMapperProvider(scheme),
-			Scheme:             scheme,
-			MetricsBindAddress: metricsAddr,
-			Namespace:          podNamespace,
-			// The operator will receive notifications/events only for the pod objects
-			// that satisfy the LabelSelector.
-			NewCache: cache.BuilderWithOptions(cache.Options{
-				SelectorsByObject: tunneloperator.LabelSelector,
-			}),
-		})
-		if err != nil {
-			klog.Errorf("unable to get manager for the label controller: %s", err)
-			os.Exit(1)
-		}
-		// The mainMgr is the one used for the tunnelendpoints.net.liqo.io CRDs. It needs
-		// to have cluster wide permissions for tep resources. It has the leader election
-		// enabled assuring that only one instance is active.
 		mainMgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 			MapperProvider:                mapperUtils.LiqoMapperProvider(scheme),
 			Scheme:                        scheme,
@@ -257,6 +236,9 @@ func main() {
 			LeaseDuration:                 &leaseDuration,
 			RenewDeadline:                 &renewDeadLine,
 			RetryPeriod:                   &retryPeriod,
+			NewCache: cache.BuilderWithOptions(cache.Options{
+				SelectorsByObject: tunneloperator.LabelSelector,
+			}),
 		})
 		if err != nil {
 			klog.Errorf("unable to get main manager: %s", err)
@@ -277,20 +259,31 @@ func main() {
 			klog.Errorf("an error occurred while creating custom network namespace: %s", err.Error())
 			os.Exit(1)
 		}
+		hostNetns, err := ns.GetCurrentNS()
+		if err != nil {
+			klog.Errorf("an error occurred while getting host network namespace: %s", err.Error())
+			os.Exit(1)
+		}
 		klog.Infof("created custom network namespace {%s}", liqoconst.GatewayNetnsName)
 
-		labelController := tunneloperator.NewLabelerController(podIP.String(), labelMgr.GetClient())
-		if err = labelController.SetupWithManager(labelMgr); err != nil {
+		labelController := tunneloperator.NewLabelerController(podIP.String(), mainMgr.GetClient())
+		if err = labelController.SetupWithManager(mainMgr); err != nil {
 			klog.Errorf("unable to setup labeler controller: %s", err)
 			os.Exit(1)
 		}
-		tunnelController, err := tunneloperator.NewTunnelController(podIP.String(),
-			podNamespace, eventRecorder, clientset, mainMgr.GetClient(), &readyClustersMutex,
-			readyClusters, gatewayNetns)
+		tunnelController, err := tunneloperator.NewTunnelController(podIP.String(), podNamespace, eventRecorder, clientset, mainMgr.GetClient(), &readyClustersMutex, readyClusters, gatewayNetns, hostNetns)
+		// If something goes wrong while creating and configuring the tunnel controller
+		// then make sure that we remove all the resources created during the create process.
 		if err != nil {
 			klog.Errorf("an error occurred while creating the tunnel controller: %v", err)
-			_ = tunnelController.CleanUpConfiguration(liqoconst.GatewayNetnsName, liqoconst.HostVethName)
-			tunnelController.RemoveAllTunnels()
+			klog.Info("cleaning up gateway network namespace")
+			if err := liqonetns.DeleteNetns(liqoconst.GatewayNetnsName); err != nil{
+				klog.Errorf("an error occurred while deleting netns {%s}: %v", liqoconst.GatewayNetnsName, err)
+			}
+			klog.Info("cleaning up wireguard tunnel interface")
+			if err := utils.DeleteIFaceByName(tunnelwg.DeviceName); err != nil{
+				klog.Errorf("an error occurred while deleting iface {%s}: %v", tunnelwg.DriverName, err)
+			}
 			os.Exit(1)
 		}
 		if err = tunnelController.SetupWithManager(mainMgr); err != nil {
@@ -308,10 +301,6 @@ func main() {
 			os.Exit(1)
 		}
 
-		if err := mainMgr.Add(labelMgr); err != nil {
-			klog.Errorf("unable to add the label manager to the main manager: %s", err)
-			os.Exit(1)
-		}
 		klog.Info("Starting manager as Tunnel-Operator")
 		if err := mainMgr.Start(tunnelController.SetupSignalHandlerForTunnelOperator()); err != nil {
 			klog.Errorf("unable to start tunnel controller: %s", err)

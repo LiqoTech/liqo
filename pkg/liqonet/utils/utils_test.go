@@ -23,6 +23,7 @@ const (
 	labelValue        = "LabelValue"
 	annotationKey     = "net.liqo.io/AnnotationKey"
 	annotationValue   = "AnnotationValue"
+	interfaceName = "dummy-link"
 )
 
 var (
@@ -314,6 +315,22 @@ var _ = Describe("Liqonet", func() {
 			It("should return an empty string", func() {
 				value := utils.GetLabelValueFromObj(testPod, "nonExistingKey")
 				Expect(value).Should(Equal(""))
+			})
+		})
+	})
+
+	Describe("testing DeleteIfaceByName function", func() {
+		Context("when network interface exists", func() {
+			It("should return nil", func() {
+				err := utils.DeleteIFaceByName(interfaceName)
+				Expect(err).Should(BeNil())
+			})
+		})
+
+		Context("when network interface does not exist", func() {
+			It("should return nil", func() {
+				err := utils.DeleteIFaceByName("not-existing")
+				Expect(err).Should(BeNil())
 			})
 		})
 	})

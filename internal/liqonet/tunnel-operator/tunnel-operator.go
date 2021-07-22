@@ -83,9 +83,8 @@ type TunnelController struct {
 // +kubebuilder:rbac:groups=core,namespace="do-not-care",resources=secrets,verbs=get;list;watch;create;update;patch;delete
 
 // NewTunnelController instantiates and initializes the tunnel controller.
-func NewTunnelController(podIP, namespace string, er record.EventRecorder,
-	k8sClient k8s.Interface, cl client.Client, readyClustersMutex *sync.Mutex,
-	readyClusters map[string]struct{}, gatewayNetns ns.NetNS) (*TunnelController, error) {
+func NewTunnelController(podIP, namespace string, er record.EventRecorder, k8sClient k8s.Interface, cl client.Client,
+	readyClustersMutex *sync.Mutex, readyClusters map[string]struct{}, gatewayNetns, hostNetns ns.NetNS) (*TunnelController, error) {
 	tc := &TunnelController{
 		Client:             cl,
 		EventRecorder:      er,
@@ -95,6 +94,7 @@ func NewTunnelController(podIP, namespace string, er record.EventRecorder,
 		readyClustersMutex: readyClustersMutex,
 		readyClusters:      readyClusters,
 		gatewayNetns:       gatewayNetns,
+		hostNetns:          hostNetns,
 	}
 
 	err := tc.SetUpTunnelDrivers()
@@ -488,12 +488,7 @@ func (tc *TunnelController) SetUpRouteManager() error {
 }
 
 func (tc *TunnelController) setUpGWNetns(netnsName, hostVethName, gatewayVethName, gatewayVethIPAddr string, vethMtu int) error {
-	// Get current netns (hostNetns).
 	var err error
-	tc.hostNetns, err = ns.GetCurrentNS()
-	if err != nil {
-		return err
-	}
 	// Create veth pair to connect the two namespaces.
 	err = liqonetns.CreateVethPair(hostVethName, gatewayVethName, tc.hostNetns, tc.gatewayNetns, vethMtu)
 	if err != nil {
